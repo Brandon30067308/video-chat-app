@@ -1,39 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 
-let sign = false;
-
-const Loading = ({ number, fullWidth }) => {
+const Loading = ({ text = "Loading", fullWidth = false }) => {
   const [count, setCount] = useState(1);
-  let c = useRef(1);
+  let countRef = useRef(1);
+  let forwardRef = useRef(false);
 
   useEffect(() => {
     const intervalID = setInterval(() => {
-      if (c.current === number || c.current === 1) {
-        sign = !sign;
+      if (countRef.current === 4 || countRef.current === 1) {
+        forwardRef.current = !forwardRef.current;
       }
-      c.current = sign ? ++c.current : --c.current;
-      setCount(c.current);
-    }, 700);
+
+      countRef.current = forwardRef.current
+        ? ++countRef.current
+        : --countRef.current;
+      setCount(countRef.current);
+    }, 750);
 
     return () => {
       clearInterval(intervalID);
-    }
-  }, [number]);
+    };
+  }, []);
 
   return (
     <div
       className={"loading flex"}
       style={{
-        height: `${fullWidth ? 'calc(100vh - (var(--container-padding) * 2))'
-          : 'auto'}`,
-        margin: `${fullWidth ? '0px' : '13.5px 0px 0px 15px'}`
+        height: `${
+          fullWidth ? "calc(100vh - (var(--container-padding) * 2))" : "auto"
+        }`,
+        margin: `${fullWidth ? "0px" : "13.5px 0px 0px 15px"}`,
       }}
     >
-      <span
-        className={`${fullWidth ? 'full-width' : ''}`}
-      >Loading{'.'.repeat(count)}</span>
+      <span className={`${fullWidth ? "full-width" : ""}`}>
+        {`${text}${".".repeat(count)}`}
+      </span>
     </div>
-  )
-}
+  );
+};
 
 export default Loading;

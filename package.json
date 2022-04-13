@@ -1,5 +1,5 @@
 {
-  "name": "video-chatapp",
+  "name": "video-conferencing-app",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -14,14 +14,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@fortawesome/free-solid-svg-icons": "^6.0.0",
-    "@fortawesome/react-fontawesome": "^0.1.17",
     "express": "^4.17.1",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-modal": "^3.14.4",
-    "socket.io": "^4.0.0",
-    "swiper": "^7.4.1"
+    "socket.io": "^4.0.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.15"

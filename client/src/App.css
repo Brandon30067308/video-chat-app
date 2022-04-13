@@ -1,5 +1,18 @@
 @import url("https://fonts.googleapis.com/css2?family=PT+Mono&display=swap");
 
+:root {
+  --primary: #f1f4f8bf;
+  --primaryAlt: #dde3eed9;
+  --text-color: #2e2e2e;
+  --field-focus-border: #aaaaaa;
+  --container-padding: 3rem;
+  --border: #e4e4e4;
+  --border-alt: #c8c8c8;
+  --error-color: #d68d8d;
+  --muted: #737373;
+  --text-base: 18px;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -7,21 +20,6 @@
   font-family: "PT Mono", monospace;
   font-weight: 600;
   color: var(--text-color);
-}
-
-:root {
-  --primary: #f1f4f8bf;
-  --primaryAlt: #dde3eed9;
-  --text-color: #2e2e2e;
-  --field-focus: #bababa;
-  --container-padding: 3rem;
-  --border-normal: #ededed;
-  --field-color: #d4d4d4;
-  --gray: #fafafa;
-  --font-normal: 18px;
-  --error-color: #d68d8d;
-  --light-bg: #ebebeb59;
-  --muted: #737373;
 }
 
 body .app-container {
@@ -82,7 +80,7 @@ body .container {
   margin: 45px 0px;
   padding: 40px 20px;
   background-color: var(--gray);
-  border: 1px solid var(--border-normal);
+  border: 1px solid var(--border);
   border-radius: 1.5rem;
   width: 875px;
   background-image: url(./images/constellation.svg);
@@ -118,14 +116,14 @@ body nav {
 /* icon button */
 nav .icon-button {
   border-radius: 50%;
-  width: 40px !important;
-  height: 40px !important;
+  width: 45px !important;
+  height: 45px !important;
 }
 
 /* alt button */
 .alt-button {
   background: #fafafa !important;
-  border: 1px solid var(--border-normal) !important;
+  border: 1px solid var(--border) !important;
   box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.025) !important;
   margin: 0 !important;
 }
@@ -133,7 +131,6 @@ nav .icon-button {
 .video-container {
   width: 100%;
   max-width: 1200px;
-  gap: 1.5rem;
   align-items: flex-start;
   justify-content: flex-start;
   flex-wrap: wrap;
@@ -142,6 +139,7 @@ nav .icon-button {
 .video-container > div {
   width: 30%;
   max-width: 550px;
+  margin: 0 1.5rem 1.5rem 0;
 }
 
 .video-container > div > div {
@@ -149,6 +147,10 @@ nav .icon-button {
   width: 100%;
   justify-content: space-between;
   padding: 10px 5px;
+}
+
+.video-container > div > div button:nth-child(1) {
+  margin-right: 14px !important;
 }
 
 .video-container > div > div button,
@@ -185,14 +187,13 @@ body video ~ span {
   content: "";
   position: absolute;
   height: 100%;
-  background: var(--gray);
-  border: 1px solid var(--border-normal);
+  border: 1px solid var(--border);
   left: 0;
   top: 0;
   border-radius: 0.5rem;
   font-size: 30px;
+  background-color: #fafafa;
   background-image: url(./images/constellation.svg);
-  box-shadow: inset 0 0px 4px 1px rgb(0 0 0 / 0.025) !important;
 }
 
 body .container form {
@@ -201,17 +202,16 @@ body .container form {
 
 button,
 input {
-  font-size: var(--font-normal);
+  font-size: var(--text-base);
   border-radius: 10rem;
-  border: 1px solid var(--primaryAlt);
   height: 65px;
   outline: none;
 }
 
 input {
+  appearance: none;
   padding: 7.5px 23.5px;
-  border: 1px solid var(--field-color);
-  box-shadow: inset 0 0px 4px 0 rgb(0 0 0 / 0.025);
+  border: 1px solid var(--border-alt);
 }
 
 button {
@@ -219,8 +219,9 @@ button {
   height: 75px;
   cursor: pointer;
   background-color: var(--primary);
-  transition: transform 0.25s ease;
+  border: 1px solid var(--border-alt);
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: transform 0.25s ease;
 }
 
 button:disabled {
@@ -232,13 +233,13 @@ button:hover {
 }
 
 input:focus {
-  border-color: var(--field-focus);
+  border-color: var(--field-focus-border);
 }
 
 .error {
   color: var(--error-color);
   margin: 11.5px 0px 0px 15px;
-  font-size: var(--font-normal);
+  font-size: var(--text-base);
 }
 
 .error-input {
@@ -295,13 +296,17 @@ input:focus {
   display: none;
   position: absolute;
   bottom: 10px;
-  left: calc(50% - (200px / 2));
-  width: 200px;
-  height: 33px;
+  left: calc(50% - (210px / 2));
+  width: 210px;
+  height: 45px;
   overflow-y: hidden;
 }
 
 .copied-msg > span {
+  background: #fafafa;
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 13.5rem;
   animation: 0.5s ease-in 0s forwards normal slide-up;
   justify-content: space-between;
 }
@@ -317,7 +322,8 @@ input:focus {
 @keyframes slide-up {
   from {
     transform: translateY(100px);
-  } to {
+  }
+  to {
     transform: translateY(0px);
   }
 }
@@ -330,6 +336,7 @@ input:focus {
   flex-direction: column;
   justify-content: center;
   position: relative;
+  margin-top: 2.5rem;
 }
 
 .how-to {
@@ -338,7 +345,6 @@ input:focus {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  row-gap: 1.25rem;
 }
 
 .how-to .heading-lg {
@@ -352,7 +358,6 @@ input:focus {
   display: flex !important;
   align-items: center;
   justify-content: center;
-  column-gap: 0.5rem;
 }
 
 .swiper-pagination-bullet {
@@ -361,6 +366,7 @@ input:focus {
   opacity: 1 !important;
   width: 11.5px !important;
   height: 11.5px !important;
+  margin: 0 0.5rem !important;
 }
 
 .swiper-pagination-bullet-active {
@@ -371,10 +377,11 @@ input:focus {
 
 .how-to .icon {
   background-color: hsl(0, 0%, 98%);
-  border: 1px solid var(--border-normal);
+  border: 1px solid var(--border);
   width: 100px;
   height: 100px;
   border-radius: 50%;
+  margin-bottom: 1.25rem;
 }
 
 .how-to .icon svg {
@@ -411,25 +418,27 @@ input:focus {
 
 .swiper .swiper-button.right,
 .swiper .swiper-button.right::after {
-  right: 0;
+  right: 0px;
 }
 
 .swiper .swiper-button.left,
 .swiper .swiper-button.left::after {
-  left: 0;
+  left: 0px;
 }
 
 .swiper-button-prev::after,
 .swiper-button-next::after {
-  content: '' !important;
+  content: "" !important;
 }
 
 .swiper .swiper-button.right::after {
   box-shadow: -35px 0px 0px 0px #ffffffed;
+  transform: translate3d(7.5px, 0px, 0px);
 }
 
 .swiper .swiper-button.left::after {
   box-shadow: 35px 0px 0px 0px #ffffffed;
+  transform: translate3d(-7.5px, 0px, 0px);
 }
 
 @keyframes slide-in {
@@ -443,13 +452,12 @@ input:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgb(248, 248, 248, 0.725) !important;
+  background-color: rgba(220, 220, 220, 0.4) !important;
 }
 
 .modal-menu {
   animation: 0.3s ease-in 0s forwards normal slide-in;
   transform: translateX(-100%);
-  box-shadow: 0px 0px 2px 0.75px rgb(0 0 0 / 0.075);
   outline: none;
   width: 88%;
   max-width: 850px;
@@ -461,13 +469,11 @@ input:focus {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  row-gap: 2.5rem;
 }
 
 /* modal close button */
 .close-modal-button {
   font-size: 14px;
-  flex: 0.2;
   text-align: right;
   box-shadow: none;
   margin: 0 !important;
@@ -479,9 +485,13 @@ input:focus {
 }
 
 .onboarding form {
-  margin: 0 auto;
+  margin: 2.5rem auto 0 auto;
   max-width: 550px;
-  row-gap: 1.25rem;
+}
+
+.onboarding form > div,
+.onboarding form > input {
+  margin-bottom: 1rem;
 }
 
 .onboarding .error {
@@ -496,7 +506,7 @@ input:focus {
   width: 105px;
   min-width: 105px !important;
   height: 55px;
-  margin: 0 !important;
+  margin: 0 0 1rem 0 !important;
 }
 
 .onboarding .checkbox {
@@ -505,8 +515,7 @@ input:focus {
   margin-left: 10px;
   cursor: pointer;
   outline: none;
-  border: 1px solid var(--field-color);
-  box-shadow: inset 0 0px 4px 0 rgb(0 0 0 / 0.025);
+  border: 1px solid var(--border-alt);
 }
 
 .onboarding .checkbox svg {
@@ -545,26 +554,24 @@ input:focus {
 @media (max-width: 600px) {
   :root {
     --container-padding: 0.65rem;
-    --font-normal: 14.65px;
+    --text-base: 14.5px;
   }
   .loading > .full-width {
-    font-size: 20px !important;
+    font-size: 19px !important;
   }
   body button {
     width: 145px;
     min-width: 145px;
   }
-  .video-container {
-    gap: 0.75rem;
-  }
   .video-container > div {
     width: 46% !important;
+    margin: 0 0.75rem 0.75rem 0;
   }
   .video-container > div > div svg {
     font-size: 16.5px;
   }
   body video {
-    height: 180px; 
+    height: 180px;
   }
   body .app-container .container .heading-lg {
     font-size: 18.5px;
@@ -602,11 +609,7 @@ input:focus {
 }
 
 @media (max-width: 480px) {
-  :root {
-    --gray: transparent;
-  }
   body .app-container .container {
-    border: none;
     margin: 15px 0px;
   }
   .swiper-button-next svg,

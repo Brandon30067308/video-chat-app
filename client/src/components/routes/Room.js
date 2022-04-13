@@ -1,294 +1,345 @@
-import React, { useEffect, useRef, useState } from 'react';
-import io from 'socket.io-client';
-import { withRouter } from 'react-router-dom';
-import Peer from 'simple-peer';
-import RoomHeader from '../RoomHeader';
-import PeerVideo from '../PeerVideo';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useRef, useState } from "react";
+import io from "socket.io-client";
+import { useLocation, useParams, useHistory } from "react-router-dom";
+import Peer from "simple-peer";
+import RoomHeader from "../RoomHeader";
+import PeerVideo from "../PeerVideo";
+import Loading from "../common/Loading";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faVideo,
   faMicrophone,
   faVideoSlash,
   faTimes,
-  faMicrophoneSlash
-} from '@fortawesome/free-solid-svg-icons';
+  faMicrophoneSlash,
+} from "@fortawesome/free-solid-svg-icons";
+import Modal from "react-modal";
 
-const Room = ({ props }) => {
-  const name = props?.location?.state?.name;
-  const [audioEnabled, setAudioEnabled] = useState(props?.location?.state?.audioEnabled);
-  const [videoEnabled, setVideoEnabled] = useState(props?.location?.state?.videoEnabled);
+const Room = () => {
+  const location = useLocation();
+  const params = useParams();
+  const history = useHistory();
+  const name = location?.state?.name;
+  const [audioEnabled, setAudioEnabled] = useState(
+    location?.state?.audioEnabled
+  );
+  const [videoEnabled, setVideoEnabled] = useState(
+    location?.state?.videoEnabled
+  );
   const [peers, setPeers] = useState([]);
+  const [reconnecting, setReconnecting] = useState(false);
   const peersRef = useRef([]);
   const socketRef = useRef();
   const streamRef = useRef();
-  const userVideo = useRef();
-  const mediaRef = useRef([props?.location?.state?.audioEnabled,
-  props?.location?.state?.videoEnabled]);
-  const roomID = props.match.params.roomID;
+  const userVideoRef = useRef();
   const copiedRef = useRef();
+  const mediaRef = useRef([
+    location?.state?.audioEnabled,
+    location?.state?.videoEnabled,
+  ]);
+  const roomID = params.roomID;
+
+  useEffect(() => {
+    socketRef.current = io.connect("/");
+
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        stream.getTracks().find((track) => track.kind === "video").enabled =
+          videoEnabled;
+        stream.getTracks().find((track) => track.kind === "audio").enabled =
+          audioEnabled;
+
+        streamRef.current = stream;
+
+        if (userVideoRef.current) {
+          userVideoRef.current.srcObject = stream;
+        }
+
+        socketRef.current.emit("join-room", { name, roomID });
+
+        socketRef.current.on("disconnect", () => {
+          console.log("disconnecting...");
+          cleanUp();
+        });
+
+        socketRef.current.io.on("reconnect", () => {
+          console.log("reconnected...");
+          setReconnecting(false);
+        });
+
+        socketRef.current.io.on("reconnect_failed", () => {
+          console.log("reconnect failed...");
+          setReconnecting(false);
+          history.push("/");
+        });
+
+        socketRef.current.io.on("reconnect_attempt", () => {
+          setReconnecting(true);
+          console.log("reconnecting...");
+        });
+
+        socketRef.current.on(
+          "peer-media-update",
+          ({ audioEnabled, videoEnabled, peerID }) => {
+            peersRef.current = peersRef.current.map((obj) => {
+              return obj.peerID === peerID
+                ? {
+                    ...obj,
+                    audioEnabled,
+                    videoEnabled,
+                  }
+                : obj;
+            });
+            setPeers(peersRef.current);
+          }
+        );
+
+        socketRef.current.on("user-left", (id) => {
+          console.log("user disconnected: ", id);
+          const obj = peersRef.current.find((p) => p.peerID === id);
+          obj && obj.peer.destroy();
+
+          peersRef.current = peersRef.current.filter(
+            ({ peerID }) => peerID !== id
+          );
+          setPeers(peersRef.current);
+        });
+
+        socketRef.current.on("all-users", (users) => {
+          users.forEach(({ name, id: userID }) => {
+            const peer = createPeer(userID, socketRef.current.id, stream);
+
+            peersRef.current.push({
+              name,
+              peerID: userID,
+              peer,
+              audioEnabled: false,
+              videoEnabled: false,
+            });
+          });
+          setPeers(peersRef.current);
+        });
+
+        socketRef.current.on(
+          "user-joined",
+          ({ signal, callerID, name, audioEnabled, videoEnabled }) => {
+            console.log("user joined: ", name, signal);
+            const peer = addPeer(signal, callerID, stream);
+
+            peersRef.current = [
+              ...peersRef.current,
+              {
+                name,
+                peerID: callerID,
+                peer,
+                audioEnabled,
+                videoEnabled,
+              },
+            ];
+            setPeers(peersRef.current);
+          }
+        );
+
+        socketRef.current.on(
+          "recieved-signal",
+          ({ signal, id, audioEnabled, videoEnabled }) => {
+            peersRef.current = peersRef.current.map((obj) =>
+              obj.peerID === id ? { ...obj, audioEnabled, videoEnabled } : obj
+            );
+
+            const obj = peersRef.current.find(({ peerID }) => peerID === id);
+            obj && obj.peer?.signal(signal);
+
+            setPeers(peersRef.current);
+          }
+        );
+      });
+
+    return () => {
+      socketRef.current?.connected && socketRef.current?.disconnect();
+      cleanUp();
+    };
+  }, []);
+
+  const cleanUp = () => {
+    peersRef.current.forEach(({ peer }) => peer.destroy());
+    peersRef.current = [];
+    setPeers([]);
+
+    setUserMedia(false, false);
+    setUserMedia(true, false);
+
+    streamRef.current &&
+      streamRef.current.getTracks().forEach((s) => s?.stop());
+  };
 
   const setUserMedia = (audio, value) => {
     /* media ref -> [audio, video] */
-    audio ? setAudioEnabled(value) : setVideoEnabled(value);
-    mediaRef.current = audio ?
-      [value, mediaRef.current[1]] :
-      [mediaRef.current[0], value];
-  }
+    mediaRef.current = audio
+      ? [value, mediaRef.current[1]]
+      : [mediaRef.current[0], value];
 
-  const handleLeave = () => {
-    peersRef.current = [];
-    setVideoEnabled(false);
-    setAudioEnabled(false);
-    streamRef.current && streamRef.current.getTracks().forEach(s => s?.stop());
-    setPeers([]);
-    socketRef.current.disconnect();
-    props.history.push('/');
-  }
+    !audio && !value && setVideoEnabled(false);
+    audio && setAudioEnabled(value);
 
-  useEffect(() => {
-    socketRef.current && socketRef.current.emit('media-update', {
-      roomID,
-      audioEnabled: mediaRef.current[0],
-      videoEnabled
-    });
-    const videoTrack = streamRef.current && streamRef.current.getTracks()
-      .find(track => track.kind === 'video');
-    if (videoTrack) videoTrack.enabled = videoEnabled;
-  }, [videoEnabled, roomID]);
-
-  useEffect(() => {
-    socketRef.current && socketRef.current.emit('media-update', {
-      audioEnabled,
-      videoEnabled: mediaRef.current[1]
-    });
-    const audioTrack = streamRef.current && streamRef.current.getTracks()
-      .find(track => track.kind === 'audio');
-    if (audioTrack) audioTrack.enabled = audioEnabled;
-  }, [audioEnabled, roomID]);
-
-  useEffect(() => {
-    socketRef.current = io.connect('/');
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-      stream.getTracks().find(track => track.kind === 'video').enabled = videoEnabled;
-      stream.getTracks().find(track => track.kind === 'audio').enabled = audioEnabled;
-
-      streamRef.current = stream;
-
-      if (userVideo.current) {
-        userVideo.current.srcObject = stream;
-      }
-
-      socketRef.current.emit('join-room', { name, roomID });
-
-      socketRef.current.on('peer-media-update', ({
-        audioEnabled,
-        videoEnabled,
-        peerID
-      }) => {
-        peersRef.current = [...peersRef.current].map(p => {
-          return p.peerID === peerID ? {
-            ...p,
-            audioEnabled,
-            videoEnabled
-          } :
-            p
-        });
-        setPeers(prevPeers => {
-          return prevPeers.map(p => {
-            return p.peerID === peerID ? {
-              ...p,
-              audioEnabled,
-              videoEnabled
-            } :
-              p
-          });
-        })
-      });
-
-      socketRef.current.on('user-left', id => {
-        console.log('user left: ', id);
-        const peer = peersRef.current.find(p => p.peerID === id);
-        if (peer) {
-          peer.peer.destroy();
-        }
-
-        const newPeers = [...peersRef.current].filter(p => p.peerID !== id);
-
-        peersRef.current = newPeers;
-
-        setPeers(newPeers.map(({ name, peer, peerID, audioEnabled, videoEnabled }) =>
-          ({ name, peerID, peer, audioEnabled, videoEnabled })));
-      });
-
-      socketRef.current.on('all-users', users => {
-        const peersCopy = [];
-        users.forEach(({ name, id: userID }) => {
-          /*  create a peer object for every user in the room */
-          const peer = createPeer(userID, socketRef.current.id, stream);
-          peersRef.current.push({
-            name,
-            peerID: userID,
-            peer,
-            recieved: false,
-            audioEnabled: false,
-            videoEnabled: false
-          });
-          peersCopy.push({
-            name,
-            peer,
-            peerID: userID,
-            audioEnabled: false,
-            videoEnabled: false
-          });
-        });
-        setPeers(peersCopy);
-      });
-
-      socketRef.current.on('user-joined', ({ signal, callerID, name, audioEnabled, videoEnabled }) => {
-        console.log('user joined: ', name, signal);
-        /* create a new peer for the new user and add to the list of peers */
-        const peer = addPeer(signal, callerID, stream);
-
-        /* add new peer to list of peers */
-        peersRef.current.push({
-          name,
-          peerID: callerID,
-          peer,
-          recieved: false,
-          audioEnabled,
-          videoEnabled
-        });
-
-        const newPeer = {
-          name,
-          peer,
-          peerID: callerID,
-          audioEnabled,
-          videoEnabled
-        }
-
-        setPeers(prevPeers => [...prevPeers, newPeer]);
-      });
-    });
-
-    return () => {
-      handleLeave();
+    if (audio) {
+      const audioTrack =
+        streamRef.current &&
+        streamRef.current.getTracks().find((track) => track.kind === "audio");
+      if (audioTrack) audioTrack.enabled = value;
+    } else {
+      const videoTrack =
+        streamRef.current &&
+        streamRef.current.getTracks().find((track) => track.kind === "video");
+      if (videoTrack) videoTrack.enabled = value;
     }
-  }, []);
 
+    !audio && value && setVideoEnabled(value);
 
-  function createPeer(userToSignal, callerID, stream) {
-    console.log('creating peer for existing user: ', userToSignal);
+    socketRef.current &&
+      socketRef.current.emit("media-update", {
+        roomID,
+        audioEnabled: mediaRef.current[0],
+        videoEnabled: mediaRef.current[1],
+      });
+  };
+
+  const createPeer = (userToSignal, callerID, stream) => {
     const peer = new Peer({
       initiator: true,
       trickle: false,
-      stream
+      stream,
+      config: {
+        iceServers: [
+          {
+            urls: "stun:openrelay.metered.ca:80",
+          },
+          {
+            urls: "turn:openrelay.metered.ca:80",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+          {
+            urls: "turn:openrelay.metered.ca:443",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+          {
+            urls: "turn:openrelay.metered.ca:443?transport=tcp",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+        ],
+      },
     });
 
-    peer.on('signal', signal => {
-      console.log('signal received for existing user peer: ', userToSignal);
-      /* send the signal to 'userToSignal' */
-      socketRef.current.emit('sending-signal', {
-        userToSignal, callerID, name, signal,
-        audioEnabled, videoEnabled
+    peer.on("signal", (signal) => {
+      socketRef.current.emit("sending-signal", {
+        userToSignal,
+        callerID,
+        name,
+        signal,
+        audioEnabled,
+        videoEnabled,
       });
     });
 
-    socketRef.current.on('recieved-signal', ({ signal, id, audioEnabled, videoEnabled }) => {
-      console.log('received back signal from existing user: ', signal);
-      const item = peersRef.current.find(p => p.peerID === id);
-      if (item.recieved === false) {
-        const updatedPeer = {
-          ...item,
-          recieved: true,
-          audioEnabled,
-          videoEnabled
-        }
-
-        const newPeers = [...peersRef.current].map(item => {
-          return id === item.peerID ? {
-            name: item.name,
-            peer: item.peer,
-            peerID: item.peerID,
-            audioEnabled,
-            videoEnabled
-          } : {
-            name: item.name,
-            peer: item.peer,
-            peerID: item.peerID,
-            audioEnabled: item.audioEnabled,
-            videoEnabled: item.videoEnabled
-          };
-        });
-
-        /* update peer media */
-        setPeers(newPeers);
-
-        peersRef.current[peersRef.current.indexOf(item)] = updatedPeer;
-        item.peer.signal(signal);
-      }
+    peer.on("error", (error) => {
+      console.log("peer error: ", error);
     });
 
     return peer;
-  }
+  };
 
-  function addPeer(incomingSignal, callerID, stream) {
-    console.log('adding new peer: ', incomingSignal);
-    /* incomingSignal -> signal recieved from new user */
+  const addPeer = (incomingSignal, callerID, stream) => {
     const peer = new Peer({
       initiator: false,
       trickle: false,
-      stream
+      stream,
+      config: {
+        iceServers: [
+          {
+            urls: "stun:openrelay.metered.ca:80",
+          },
+          {
+            urls: "turn:openrelay.metered.ca:80",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+          {
+            urls: "turn:openrelay.metered.ca:443",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+          {
+            urls: "turn:openrelay.metered.ca:443?transport=tcp",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+        ],
+      },
     });
-    peer.on('signal', signal => {
-      console.log('returning signal to new user: ', signal);
-      socketRef.current.emit('returning-signal', {
+
+    peer.on("signal", (signal) => {
+      socketRef.current.emit("returning-signal", {
         signal,
         callerID,
         audioEnabled: mediaRef.current[0],
-        videoEnabled: mediaRef.current[1]
+        videoEnabled: mediaRef.current[1],
       });
     });
 
-    peer.signal(incomingSignal);
+    peer.on("error", (error) => {
+      console.log("peer error: ", error);
+    });
+
+    peer?.signal(incomingSignal);
 
     return peer;
-  }
+  };
 
   return (
     <div className="w-full">
-      <RoomHeader
-        roomID={roomID}
-        copiedRef={copiedRef}
-      />
+      <RoomHeader roomID={roomID} copiedRef={copiedRef} />
       <div className="flex video-container">
         <div className="flex column">
           {
             <div className="video-box">
               <video
-                ref={userVideo}
+                ref={userVideoRef}
                 playsInline
                 autoPlay
                 muted
-                className={`${!videoEnabled ? 'disabled' : 'enabled'}`}
+                className={`${!videoEnabled ? "disabled" : "enabled"}`}
               />
-              {!videoEnabled && <span className="flex muted w-full">
-                {name && name[0]}
-              </span>}
+              {!videoEnabled && (
+                <span className="flex muted w-full">{name && name[0]}</span>
+              )}
             </div>
           }
           <div className="flex">
-            {name && <p>{name.length > 8 ? `${name.slice(0, 9)}...` : name}</p>}
+            {name && (
+              <p
+                style={{
+                  overflowWrap: "anywhere",
+                  flex: "1",
+                }}
+              >
+                {name.length > 7 ? `${name.slice(0, 7)}...` : name}
+              </p>
+            )}
             <div
               className="flex"
               style={{
-                columnGap: '1rem'
-              }}>
+                marginLeft: "8px",
+              }}
+            >
               <button
+                onClick={() => setUserMedia(false, !videoEnabled)}
                 className="icon-button"
-                onClick={
-                  () => setUserMedia(false, !videoEnabled)
-                }>
+                style={{ marginRight: "14px" }}
+              >
                 <FontAwesomeIcon
                   className="muted"
                   icon={videoEnabled ? faVideo : faVideoSlash}
@@ -296,9 +347,7 @@ const Room = ({ props }) => {
               </button>
               <button
                 className="icon-button"
-                onClick={
-                  () => setUserMedia(true, !audioEnabled)
-                }
+                onClick={() => setUserMedia(true, !audioEnabled)}
               >
                 <FontAwesomeIcon
                   className="muted"
@@ -308,35 +357,43 @@ const Room = ({ props }) => {
             </div>
           </div>
         </div>
-        {
-          peers.length >= 1 && peers.map(p => {
-            return <PeerVideo key={p.peerID} user={p} />
-          })
-        }
+        {peers.length >= 1 &&
+          peers.map((p) => {
+            return <PeerVideo key={p.peerID} user={p} />;
+          })}
       </div>
       <button
-        onClick={handleLeave}
-        className="flex leave-btn">
+        onClick={() => {
+          history.push("/");
+        }}
+        className="flex leave-btn"
+      >
         Leave Room
       </button>
-      <div
-        ref={copiedRef}
-        className="copied-msg"
-      >
-        <span
-          className="flex muted w-full">
+      <div ref={copiedRef} className="copied-msg">
+        <span className="flex muted w-full">
           roomID copied!
           <button className="icon-button">
             <FontAwesomeIcon
               icon={faTimes}
               className="muted"
-              onClick={() => copiedRef.current.style.display = 'none'}
+              onClick={() => (copiedRef.current.style.display = "none")}
             />
           </button>
         </span>
       </div>
+      {reconnecting && (
+        <Modal
+          className="reconnecting"
+          shouldCloseOnOverlayClick={false}
+          isOpen={reconnecting}
+          ariaHideApp={false}
+        >
+          <Loading text="Reconnecting" fullWidth={true} />
+        </Modal>
+      )}
     </div>
   );
-}
+};
 
-export default withRouter(Room);
+export default Room;
