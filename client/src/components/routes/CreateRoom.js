@@ -199,7 +199,7 @@ const CreateRoom = () => {
         >
           <p>How to use</p>
           <button
-            className="icon-button close-modal-button muted"
+            className="icon-button close-modal-button"
             onClick={() => setModalOpen(false)}
           >
             close

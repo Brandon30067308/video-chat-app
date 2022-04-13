@@ -160,6 +160,7 @@ nav .icon-button {
 .swiper button {
   border: none !important;
   background: none !important;
+  border-radius: unset !important;
 }
 
 .video-container > div > div svg {
@@ -220,7 +221,6 @@ button {
   cursor: pointer;
   background-color: var(--primary);
   border: 1px solid var(--border-alt);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   transition: transform 0.25s ease;
 }
 
@@ -366,7 +366,7 @@ input:focus {
   opacity: 1 !important;
   width: 11.5px !important;
   height: 11.5px !important;
-  margin: 0 0.5rem !important;
+  margin: 0 0.4rem !important;
 }
 
 .swiper-pagination-bullet-active {
@@ -475,7 +475,6 @@ input:focus {
 .close-modal-button {
   font-size: 14px;
   text-align: right;
-  box-shadow: none;
   margin: 0 !important;
 }
 
