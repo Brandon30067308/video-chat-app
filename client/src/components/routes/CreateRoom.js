@@ -135,7 +135,6 @@ const CreateRoom = () => {
   return (
     <div className="flex column">
       <nav style={{ justifyContent: "flex-end" }}>
-        {/* <Logo /> */}
         <button className="icon-button alt-button" onClick={infoClickHandler}>
           <FontAwesomeIcon icon={faInfo} className="muted" />
         </button>
@@ -215,9 +214,7 @@ const CreateRoom = () => {
         ariaHideApp={false}
       >
         <div className="w-full flex">
-          <p className="muted">
-            {isCreateRoom ? "Create room ⚡" : "Join room ⚡"}
-          </p>
+          <p>{isCreateRoom ? "Create room ⚡" : "Join room ⚡"}</p>
           <button
             className="icon-button close-modal-button"
             onClick={() => setOnBoardingModalOpen(false)}

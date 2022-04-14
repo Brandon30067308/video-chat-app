@@ -364,15 +364,13 @@ input:focus {
   background: rgba(46, 46, 46, 0.185) !important;
   transition: all 0.3s cubic-bezier(0.43, 0.77, 0.15, 1.5);
   opacity: 1 !important;
-  width: 11.5px !important;
-  height: 11.5px !important;
+  width: 10px !important;
+  height: 10px !important;
   margin: 0 0.4rem !important;
 }
 
 .swiper-pagination-bullet-active {
   background: rgba(46, 46, 46, 0.575) !important;
-  width: 11.5px !important;
-  height: 11.5px !important;
 }
 
 .how-to .icon {
@@ -479,7 +477,7 @@ input:focus {
 }
 
 .modal-menu > div > p {
-  font-size: 17.25px;
+  font-size: 17px;
   flex: 0.8;
 }
 
@@ -587,7 +585,7 @@ input:focus {
     font-size: 17.5px;
   }
   .modal-menu {
-    padding: 1.5rem 1.15rem !important;
+    padding: 1.75rem 1.15rem !important;
   }
   .modal-menu > div > p {
     font-size: 16px;
@@ -604,6 +602,10 @@ input:focus {
   }
   .swiper .swiper-button.left::after {
     box-shadow: 20px 0px 0px 0px #ffffffed !important;
+  }
+  .swiper-pagination-bullet {
+    width: 8px !important;
+    height: 8px !important;
   }
 }
 

@@ -40,121 +40,128 @@ const Room = () => {
   const roomID = params.roomID;
 
   useEffect(() => {
-    socketRef.current = io.connect("/");
+    socketRef.current = io.connect("/", {
+      reconnection: true,
+      reconnectionAttempts: 5,
+    });
 
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        stream.getTracks().find((track) => track.kind === "video").enabled =
-          videoEnabled;
-        stream.getTracks().find((track) => track.kind === "audio").enabled =
-          audioEnabled;
+    socketRef.current.on("connect", () => {
+      navigator.mediaDevices
+        .getUserMedia({ video: true, audio: true })
+        .then((stream) => {
+          stream.getTracks().find((track) => track.kind === "video").enabled =
+            videoEnabled;
+          stream.getTracks().find((track) => track.kind === "audio").enabled =
+            audioEnabled;
 
-        streamRef.current = stream;
+          streamRef.current = stream;
 
-        if (userVideoRef.current) {
-          userVideoRef.current.srcObject = stream;
-        }
-
-        socketRef.current.emit("join-room", { name, roomID });
-
-        socketRef.current.on("disconnect", () => {
-          console.log("disconnecting...");
-          cleanUp();
-        });
-
-        socketRef.current.io.on("reconnect", () => {
-          console.log("reconnected...");
-          setReconnecting(false);
-        });
-
-        socketRef.current.io.on("reconnect_failed", () => {
-          console.log("reconnect failed...");
-          setReconnecting(false);
-          history.push("/");
-        });
-
-        socketRef.current.io.on("reconnect_attempt", () => {
-          setReconnecting(true);
-          console.log("reconnecting...");
-        });
-
-        socketRef.current.on(
-          "peer-media-update",
-          ({ audioEnabled, videoEnabled, peerID }) => {
-            peersRef.current = peersRef.current.map((obj) => {
-              return obj.peerID === peerID
-                ? {
-                    ...obj,
-                    audioEnabled,
-                    videoEnabled,
-                  }
-                : obj;
-            });
-            setPeers(peersRef.current);
+          if (userVideoRef.current) {
+            userVideoRef.current.srcObject = stream;
           }
-        );
 
-        socketRef.current.on("user-left", (id) => {
-          console.log("user disconnected: ", id);
-          const obj = peersRef.current.find((p) => p.peerID === id);
-          obj && obj.peer.destroy();
-
-          peersRef.current = peersRef.current.filter(
-            ({ peerID }) => peerID !== id
-          );
-          setPeers(peersRef.current);
+          socketRef.current.emit("join-room", { name, roomID });
         });
+    });
 
-        socketRef.current.on("all-users", (users) => {
-          users.forEach(({ name, id: userID }) => {
-            const peer = createPeer(userID, socketRef.current.id, stream);
+    socketRef.current.on("disconnect", () => {
+      console.log("disconnecting...");
+      cleanUp();
+    });
 
-            peersRef.current.push({
-              name,
-              peerID: userID,
-              peer,
-              audioEnabled: false,
-              videoEnabled: false,
-            });
-          });
-          setPeers(peersRef.current);
-        });
+    socketRef.current.io.on("reconnect", () => {
+      console.log("reconnected...");
+      setReconnecting(false);
+    });
 
-        socketRef.current.on(
-          "user-joined",
-          ({ signal, callerID, name, audioEnabled, videoEnabled }) => {
-            console.log("user joined: ", name, signal);
-            const peer = addPeer(signal, callerID, stream);
+    socketRef.current.io.on("reconnect_failed", () => {
+      console.log("reconnect failed...");
+      setReconnecting(false);
+      history.push("/");
+    });
 
-            peersRef.current = [
-              ...peersRef.current,
-              {
-                name,
-                peerID: callerID,
-                peer,
+    socketRef.current.io.on("reconnect_attempt", () => {
+      setReconnecting(true);
+      console.log("reconnecting...");
+    });
+
+    socketRef.current.on(
+      "peer-media-update",
+      ({ audioEnabled, videoEnabled, peerID }) => {
+        peersRef.current = peersRef.current.map((obj) => {
+          return obj.peerID === peerID
+            ? {
+                ...obj,
                 audioEnabled,
                 videoEnabled,
-              },
-            ];
-            setPeers(peersRef.current);
-          }
+              }
+            : obj;
+        });
+        setPeers(peersRef.current);
+      }
+    );
+
+    socketRef.current.on("user-left", (id) => {
+      console.log("user disconnected: ", id);
+      const obj = peersRef.current.find((p) => p.peerID === id);
+      obj && obj.peer.destroy();
+
+      peersRef.current = peersRef.current.filter(({ peerID }) => peerID !== id);
+      setPeers(peersRef.current);
+    });
+
+    socketRef.current.on("all-users", (users) => {
+      users.forEach(({ name, id: userID }) => {
+        const peer = createPeer(
+          userID,
+          socketRef.current.id,
+          streamRef.current
         );
 
-        socketRef.current.on(
-          "recieved-signal",
-          ({ signal, id, audioEnabled, videoEnabled }) => {
-            peersRef.current = peersRef.current.map((obj) =>
-              obj.peerID === id ? { ...obj, audioEnabled, videoEnabled } : obj
-            );
-
-            const obj = peersRef.current.find(({ peerID }) => peerID === id);
-            obj && obj.peer?.signal(signal);
-
-            setPeers(peersRef.current);
-          }
-        );
+        peersRef.current.push({
+          name,
+          peerID: userID,
+          peer,
+          audioEnabled: false,
+          videoEnabled: false,
+        });
       });
+      setPeers(peersRef.current);
+    });
+
+    socketRef.current.on(
+      "user-joined",
+      ({ signal, callerID, name, audioEnabled, videoEnabled }) => {
+        console.log("user joined: ", name);
+        const peer = addPeer(signal, callerID, streamRef.current);
+
+        peersRef.current = [
+          ...peersRef.current,
+          {
+            name,
+            peerID: callerID,
+            peer,
+            audioEnabled,
+            videoEnabled,
+          },
+        ];
+        setPeers(peersRef.current);
+      }
+    );
+
+    socketRef.current.on(
+      "recieved-signal",
+      ({ signal, id, audioEnabled, videoEnabled }) => {
+        peersRef.current = peersRef.current.map((obj) =>
+          obj.peerID === id ? { ...obj, audioEnabled, videoEnabled } : obj
+        );
+
+        const obj = peersRef.current.find(({ peerID }) => peerID === id);
+        obj && obj.peer?.signal(signal);
+
+        setPeers(peersRef.current);
+      }
+    );
 
     return () => {
       socketRef.current?.connected && socketRef.current?.disconnect();

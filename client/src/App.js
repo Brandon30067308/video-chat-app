@@ -21,7 +21,7 @@ const Retry = ({ clickHandler }) => {
 };
 
 const App = () => {
-  const [rooms, setRooms] = useState();
+  const [rooms, setRooms] = useState(null);
   const [error, setError] = useState(null);
 
   const fetchRooms = () => {
@@ -67,21 +67,12 @@ const App = () => {
             exact
             render={(props) => {
               if (props?.location?.state?.name) {
-                if (!rooms && !error) return <Loading fullWidth={true} />;
-                else if (!rooms && error)
+                if (!rooms && !error) {
+                  <Loading fullWidth={true} />;
+                } else if (!rooms && error) {
                   return <Retry clickHandler={retryFetch} />;
-                let room = rooms[props.match.params.roomID];
-                let length = room ? room.length : 0;
-                if (length < 4) {
-                  return <Room />;
                 } else {
-                  return (
-                    <Redirect
-                      to={{
-                        pathname: "/",
-                      }}
-                    />
-                  );
+                  return <Room />;
                 }
               } else {
                 props.history.push(`/?roomID=${props.match.params.roomID}`);
