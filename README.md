@@ -2,12 +2,6 @@
 
 Video conferencing application built with React.js & simple-peer.
 
-### Built With
-
-- [React.js](https://reactjs.org/)
-- [simple-peer](https://github.com/feross/simple-peer/)
-- [Node.js](https://nodejs.org/)
-
 ## Setup
 
 To get a local copy of this project up and running follow these steps.
